@@ -4,11 +4,10 @@ var webpack = require('webpack');
 
 var webpackConfig = require('./webpack/webpack.dev.config.js');
 
-var localIp = webpackConfig.localIp;
-var localPort = webpackConfig.localPort;
+var localIp = 'localhost';
+var localPort = 3456;
 
-delete webpackConfig.localIp;
-delete webpackConfig.localPort;
+module.exports = {localIp, localPort};
 
 const compiler = webpack(webpackConfig);
 

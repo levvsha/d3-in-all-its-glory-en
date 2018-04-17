@@ -1,40 +1,21 @@
-var fs = require('fs');
 var path = require('path');
 var webpack = require('webpack');
-
-var os = require('os');
-var ifaces = os.networkInterfaces();
-var localIp = '';
-
-var port = '3018';
-
-Object.keys(ifaces)
-  .forEach(function (ifname) {
-    ifaces[ifname].forEach(function (iface) {
-      if ('IPv4' !== iface.family || iface.internal !== false) {
-        // skip over internal (i.e. 127.0.0.1) and non-ipv4 addresses
-        return;
-      }
-
-      localIp = iface.address;
-    });
-  });
+var localIp = require('../server').localIp;
+var localPort = require('../server').localPort;
 
 module.exports = {
-  localPort: port,
-  localIp: localIp,
+  mode: 'development',
   context: path.resolve(__dirname, '..'),
   devtool: 'cheap-inline-module-source-map',
   entry: {
     'main': [
-      'react-hot-loader/patch',
       'webpack-hot-middleware/client?reload=true',
       './src/app.js',
     ]
   },
   output: {
     path: path.resolve(__dirname),
-    publicPath: 'http://' + localIp + ':' + port + '/',
+    publicPath: 'http://' + localIp + ':' + localPort + '/',
     filename: 'main.js'
   },
   module: {
@@ -44,7 +25,7 @@ module.exports = {
         exclude: /node_modules/,
         use: [
           {
-            loader: "babel-loader"
+            loader: 'babel-loader'
           }
         ]
       },
@@ -61,9 +42,6 @@ module.exports = {
               localIdentName: '[local]',
               sourceMap: true
             }
-          },
-          {
-            loader: 'autoprefixer-loader'
           },
           {
             loader: 'stylus-loader',
@@ -136,12 +114,13 @@ module.exports = {
     new webpack.DefinePlugin({
       'IS_PRODUCTION': false
     }),
-    new webpack.optimize.CommonsChunkPlugin({
-      async: true,
-      children: true
-    }),
     new webpack.HotModuleReplacementPlugin()
   ],
+  optimization: {
+    splitChunks: { // CommonsChunkPlugin()
+      chunks: 'async'
+    }
+  },
   target: 'web', // Make web variables accessible to webpack, e.g. window
   stats: true, // Don't show stats in the console
 };
