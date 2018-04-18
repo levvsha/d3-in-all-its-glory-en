@@ -1,8 +1,7 @@
 var path = require('path');
 var webpack = require('webpack');
-var localIp = require('../server').localIp;
-var localPort = require('../server').localPort;
-
+var config = require('../config');
+console.log('config ==>', config);
 module.exports = {
   mode: 'development',
   context: path.resolve(__dirname, '..'),
@@ -15,7 +14,7 @@ module.exports = {
   },
   output: {
     path: path.resolve(__dirname),
-    publicPath: 'http://' + localIp + ':' + localPort + '/',
+    publicPath: 'http://' + config.localIp + ':' + config.localPort + '/',
     filename: 'main.js'
   },
   module: {

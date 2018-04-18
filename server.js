@@ -1,13 +1,10 @@
 /* eslint-disable */
-var express = require('express');
-var webpack = require('webpack');
+const express = require('express');
+const webpack = require('webpack');
 
-var webpackConfig = require('./webpack/webpack.dev.config.js');
+const webpackConfig = require('./webpack/webpack.dev.config.js');
 
-var localIp = 'localhost';
-var localPort = 3456;
-
-module.exports = {localIp, localPort};
+const config = require('./config');
 
 const compiler = webpack(webpackConfig);
 
@@ -26,6 +23,6 @@ app.use((req, res) => {
     .sendFile(__dirname + '/index.html')
 });
 
-app.listen(localPort, () => {
-  console.info(`==> Open up http://${ localIp }:${ localPort }/ in your browser.`)
+app.listen(config.localPort, () => {
+  console.info(`==> Open up http://${ config.localIp }:${ config.localPort }/ in your browser.`)
 });
