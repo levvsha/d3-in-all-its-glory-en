@@ -1,5 +1,4 @@
 import * as d3 from 'd3';
-import 'styles.styl';
 import dataAsString from './data-as-string';
 
 const data = d3.csvParse(dataAsString, d => d);
@@ -15,7 +14,27 @@ export default function draw() {
   const y = d3.scaleLinear()
     .range([height, 0]);
 
-  const colorScale = d3.scaleOrdinal(d3.schemePaired);
+  const colorScale = d3.scaleOrdinal()
+    .range([
+      '#4c78a8',
+      '#9ecae9',
+      '#f58518',
+      '#ffbf79',
+      '#54a24b',
+      '#88d27a',
+      '#b79a20',
+      '#439894',
+      '#83bcb6',
+      '#e45756',
+      '#ff9d98',
+      '#79706e',
+      '#bab0ac',
+      '#d67195',
+      '#fcbfd2',
+      '#b279a2',
+      '#9e765f',
+      '#d8b5a5'
+    ]);
 
   const svg = d3.select('.chart')
     .append('svg')
