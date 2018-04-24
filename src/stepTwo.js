@@ -21,8 +21,8 @@ function chunkHelper(data, numberOfChunks) {
 
 export default function draw() {
   const margin = {top: 20, right: 20, bottom: 50, left: 50};
-  const width = 920 - margin.left - margin.right;
-  const height = 390 - margin.top - margin.bottom;
+  const width = 750 - margin.left - margin.right;
+  const height = 420 - margin.top - margin.bottom;
 
   const x = d3.scaleTime()
     .range([0, width]);
@@ -125,38 +125,43 @@ export default function draw() {
 
   const lineGenerator = d3.line()
     .x(d => x(d.date))
-    .y(d => y(d.percent))
-    .curve(d3.curveCardinal);
+    .y(d => y(d.percent));
 
   const legendContainer = d3.select('.legend');
-  const chunkedRegionsIds = chunkHelper(regionsIds, 3);
 
-  const legends = legendContainer.selectAll('div.legend-column')
-    .data(chunkedRegionsIds)
+  const legends = legendContainer
+    .append('svg')
+    .attr('width', 150)
+    .attr('height', 353)
+    .selectAll('g')
+    .data(regionsIds)
     .enter()
-    .append('div')
-    .attr('class', 'legend-column')
-    .selectAll('div.legend-item')
-    .data(d => d)
-    .enter()
-    .append('div')
+    .append('g')
     .attr('class', 'legend-item')
+    .attr('transform', (regionId, index) => `translate(0,${ index * 20 })`)
     .on('click', clickLegendHandler);
 
-  legends.append('div')
-    .attr('class', 'legend-item-color')
-    .style('background-color', regionId => colorScale(regionId));
-
-  legends.append('div')
-    .attr('class', 'legend-item-text')
-    .text(regionId => regionsNamesById[regionId]);
+  legends.append('rect')
+    .attr('x', 0)
+    .attr('y', 0)
+    .attr('width', 12)
+    .attr('height', 12)
+    .style('fill', regionId => colorScale(regionId))
+    .select(function() { return this.parentNode; })
+    .append('text')
+    .attr('x', 20)
+    .attr('y', 10)
+    .text(regionId => regionsNamesById[regionId])
+    .attr('class', 'textselected')
+    .style('text-anchor', 'start')
+    .style('font-size', 12);
 
   const extraOptionsContainer = legendContainer.append('div')
     .attr('class', 'extra-options-container');
 
   extraOptionsContainer.append('div')
     .attr('class', 'hide-all-option')
-    .text('hide all')
+    .text('скрыть все')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = false;
@@ -167,7 +172,7 @@ export default function draw() {
 
   extraOptionsContainer.append('div')
     .attr('class', 'show-all-option')
-    .text('show all')
+    .text('показать все')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = true;
