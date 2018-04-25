@@ -3,26 +3,15 @@ import dataAsString from './data-as-string';
 
 const data = d3.csvParse(dataAsString, d => d);
 
-function chunkHelper(data, numberOfChunks) {
-  const result = [];
-  let remainingToDistribute = data.length;
+const ENABLED_OPACITY = 1;
+const DISABLED_OPACITY = .2;
 
-  while (result.length < numberOfChunks) {
-    const maxNumberOfElementsInChunk = Math.ceil(remainingToDistribute / (numberOfChunks - result.length));
-    const currentlyDistributed = data.length - remainingToDistribute;
-    const currentChunk = data.slice(currentlyDistributed, currentlyDistributed + maxNumberOfElementsInChunk);
-
-    result.push(currentChunk);
-    remainingToDistribute = remainingToDistribute - currentChunk.length;
-  }
-
-  return result;
-}
+const timeFormatter = d3.timeFormat('%d-%m-%Y');
 
 export default function draw() {
   const margin = { top: 20, right: 20, bottom: 50, left: 50 };
-  const width = 920 - margin.left - margin.right;
-  const height = 390 - margin.top - margin.bottom;
+  const width = 750 - margin.left - margin.right;
+  const height = 420 - margin.top - margin.bottom;
 
   const x = d3.scaleTime()
     .range([0, width]);
@@ -33,7 +22,27 @@ export default function draw() {
   let rescaledX = x;
   let rescaledY = y;
 
-  const colorScale = d3.scaleOrdinal(d3.schemeCategory20);
+  const colorScale = d3.scaleOrdinal()
+    .range([
+      '#4c78a8',
+      '#9ecae9',
+      '#f58518',
+      '#ffbf79',
+      '#54a24b',
+      '#88d27a',
+      '#b79a20',
+      '#439894',
+      '#83bcb6',
+      '#e45756',
+      '#ff9d98',
+      '#79706e',
+      '#bab0ac',
+      '#d67195',
+      '#fcbfd2',
+      '#b279a2',
+      '#9e765f',
+      '#d8b5a5'
+    ]);
 
   const zoom = d3.zoom()
     .scaleExtent([0.95, 10])
@@ -52,34 +61,32 @@ export default function draw() {
     .append('g')
     .attr('transform', `translate(${ margin.left },${ margin.top })`);
 
-  data.forEach(d => {
+  data.forEach(function (d) {
     d.date = new Date(d.date);
     d.percent = +d.percent;
   });
 
   x.domain(d3.extent(data, d => d.date));
-  y.domain([0, d3.max(data, d => d.percent)]);
+  y.domain(d3.extent(data, d => d.percent));
   colorScale.domain(d3.map(data, d => d.regionId).keys());
 
   const xAxis = d3.axisBottom(x)
     .ticks((width + 2) / (height + 2) * 5)
-    .tickSize(-height - 6)
+    .tickSize(-height)
     .tickPadding(10);
 
   const yAxis = d3.axisRight(y)
     .ticks(5)
-    .tickSize(7 + width)
-    .tickPadding(-15 - width)
-    .tickFormat(d => d + '%');
+    .tickSize(width)
+    .tickPadding(-20 - width);
 
   const xAxisElement = svg.append('g')
-    .attr('class', 'axis x-axis')
-    .attr('transform', `translate(0,${ height + 6 })`)
+    .attr('class', 'axis')
+    .attr('transform', `translate(0,${ height })`)
     .call(xAxis);
 
   const yAxisElement = svg.append('g')
-    .attr('transform', 'translate(-7, 0)')
-    .attr('class', 'axis y-axis')
+    .attr('class', 'axis')
     .call(yAxis);
 
   svg.append('g')
@@ -121,8 +128,7 @@ export default function draw() {
 
   const lineGenerator = d3.line()
     .x(d => rescaledX(d.date))
-    .y(d => rescaledY(d.percent))
-    .curve(d3.curveCardinal);
+    .y(d => rescaledY(d.percent));
 
   const nestByDate = d3.nest()
     .key(d => d.date)
@@ -139,55 +145,70 @@ export default function draw() {
   });
 
   const legendContainer = d3.select('.legend');
-  const chunkedRegionsIds = chunkHelper(regionsIds, 3);
 
-  const legends = legendContainer.selectAll('div.legend-column')
-    .data(chunkedRegionsIds)
+  const legendsSvg = legendContainer
+    .append('svg');
+
+  const legendsDate = legendsSvg.append('text')
+    .attr('visibility', 'hidden')
+    .attr('x', 0)
+    .attr('y', 10);
+
+  const legends = legendsSvg.attr('width', 210)
+    .attr('height', 373)
+    .selectAll('g')
+    .data(regionsIds)
     .enter()
-    .append('div')
-    .attr('class', 'legend-column')
-    .selectAll('div.legend-item')
-    .data(d => d)
-    .enter()
-    .append('div')
+    .append('g')
     .attr('class', 'legend-item')
+    .attr('transform', (regionId, index) => `translate(0,${ index * 20 + 20 })`)
     .on('click', clickLegendHandler);
 
-  legends.append('div')
-    .attr('class', 'legend-item-color')
-    .style('background-color', regionId => colorScale(regionId));
-
-  legends.append('div')
-    .attr('class', 'legend-item-text')
-    .text(regionId => regionsNamesById[regionId]);
-
-  const legendsValues = legends.append('div')
+  const legendsValues = legends
+    .append('text')
+    .attr('x', 0)
+    .attr('y', 10)
     .attr('class', 'legend-value');
 
-  const legendsDate = d3.selectAll('.legend-column')
-    .append('div')
-    .attr('class', 'legend-date');
+  legends.append('rect')
+    .attr('x', 58)
+    .attr('y', 0)
+    .attr('width', 12)
+    .attr('height', 12)
+    .style('fill', regionId => colorScale(regionId))
+    .select(function() { return this.parentNode; })
+    .append('text')
+    .attr('x', 78)
+    .attr('y', 10)
+    .text(regionId => regionsNamesById[regionId])
+    .attr('class', 'legend-text')
+    .style('text-anchor', 'start');
 
-  const extraOptionsContainer = d3.select('.extra-options-container');
+  const extraOptionsContainer = legendContainer.append('div')
+    .attr('class', 'extra-options-container');
 
-  extraOptionsContainer.append('span')
+  extraOptionsContainer.append('div')
     .attr('class', 'hide-all-option')
-    .text('Скрыть все')
+    .text('hide all')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = false;
       });
 
+      singleLineSelected = false;
+
       redrawChart();
     });
 
-  extraOptionsContainer.append('span')
+  extraOptionsContainer.append('div')
     .attr('class', 'show-all-option')
-    .text('Показать все')
+    .text('show all')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = true;
       });
+
+      singleLineSelected = false;
 
       redrawChart();
     });
@@ -262,9 +283,9 @@ export default function draw() {
       .style('stroke', regionId => colorScale(regionId));
 
     legends.each(function(regionId) {
-      const isEnabledRegion = enabledRegionsIds.indexOf(regionId) >= 0;
+      const opacityValue = enabledRegionsIds.indexOf(regionId) >= 0 ? ENABLED_OPACITY : DISABLED_OPACITY;
 
-      d3.select(this).classed('disabled', !isEnabledRegion);
+      d3.select(this).attr('opacity', opacityValue);
     });
 
     const filteredData = data.filter(dataItem => enabledRegionsIds.indexOf(dataItem.regionId) >= 0);
@@ -350,8 +371,7 @@ export default function draw() {
         return d3.line()
           .defined(d => d.percent !== 0)
           .x(d => rescaledX(d.date))
-          .y(d => rescaledY(d.percent))
-          .curve(d3.curveCardinal)(regions[regionId].data);
+          .y(d => rescaledY(d.percent))(regions[regionId].data);
       });
 
     voronoiGroup

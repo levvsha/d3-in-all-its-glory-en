@@ -136,14 +136,14 @@ export default function draw() {
     .attr('y', 10);
 
   const legends = legendsSvg.attr('width', 210)
-    .attr('height', 353)
+    .attr('height', 373)
     .selectAll('g')
     .data(regionsIds)
     .enter()
     .append('g')
     .attr('class', 'legend-item')
     .attr('transform', (regionId, index) => `translate(0,${ index * 20 + 20 })`)
-    .on('click', clickLegendRectHandler);
+    .on('click', clickLegendHandler);
 
   const legendsValues = legends
     .append('text')
@@ -272,7 +272,7 @@ export default function draw() {
       .on('click', voronoiClick);
   }
 
-  function clickLegendRectHandler(regionId) {
+  function clickLegendHandler(regionId) {
     if (singleLineSelected) {
       const newEnabledRegions = singleLineSelected === regionId ? [] : [singleLineSelected, regionId];
 
