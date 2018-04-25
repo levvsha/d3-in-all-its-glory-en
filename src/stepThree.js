@@ -6,26 +6,10 @@ const data = d3.csvParse(dataAsString, d => d);
 const ENABLED_OPACITY = 1;
 const DISABLED_OPACITY = .2;
 
-function chunkHelper(data, numberOfChunks) {
-  const result = [];
-  let remainingToDistribute = data.length;
-
-  while (result.length < numberOfChunks) {
-    const maxNumberOfElementsInChunk = Math.ceil(remainingToDistribute / (numberOfChunks - result.length));
-    const currentlyDistributed = data.length - remainingToDistribute;
-    const currentChunk = data.slice(currentlyDistributed, currentlyDistributed + maxNumberOfElementsInChunk);
-
-    result.push(currentChunk);
-    remainingToDistribute = remainingToDistribute - currentChunk.length;
-  }
-
-  return result;
-}
-
 export default function draw() {
   const margin = { top: 20, right: 20, bottom: 50, left: 50 };
   const width = 750 - margin.left - margin.right;
-  const height = 415 - margin.top - margin.bottom;
+  const height = 420 - margin.top - margin.bottom;
 
   const x = d3.scaleTime()
     .range([0, width]);
