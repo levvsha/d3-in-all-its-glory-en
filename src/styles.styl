@@ -34,6 +34,8 @@ body {
   stroke-width: 1.5px;
 }
 
+//STEP TWO
+
 .legend {
   margin-top: 20px;
 }
@@ -44,6 +46,10 @@ body {
 
 .legend-item {
   cursor: pointer;
+}
+
+.legend-item:hover {
+  text-decoration: underline;
 }
 
 .extra-options-container {
@@ -61,4 +67,21 @@ body {
 
 .hide-all-option:hover, .show-all-option:hover {
   text-decoration: none;
+}
+
+//STEP THREE
+
+.voronoi path {
+  fill: none;
+  pointer-events: all;
+}
+
+.voronoi-show path {
+  stroke: red;
+  stroke-opacity: 0.2;
+}
+
+.region-hover {
+  stroke: #000;
+  stroke-width: 4px;
 }
