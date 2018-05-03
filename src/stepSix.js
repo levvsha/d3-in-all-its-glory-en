@@ -205,7 +205,7 @@ export default function draw() {
 
   extraOptionsContainer.append('div')
     .attr('class', 'hide-all-option')
-    .text('скрыть все')
+    .text('hide all')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = false;
@@ -218,7 +218,7 @@ export default function draw() {
 
   extraOptionsContainer.append('div')
     .attr('class', 'show-all-option')
-    .text('показать все')
+    .text('show all')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = true;
@@ -430,14 +430,33 @@ export default function draw() {
     }
   }
 
+  function clamp(number, bottom, top) {
+    let result = number;
+
+    if (number < bottom) {
+      result = bottom;
+    }
+
+    if (number > top) {
+      result = top;
+    }
+
+    return result;
+  }
+
   function dragged(d) {
+    const draggedNodeWidth = draggedNode.attr('width');
+    const draggedNodeHeight = draggedNode.attr('height');
+    const x = clamp(d3.event.x, 0, previewWidth - draggedNodeWidth);
+    const y = clamp(d3.event.y, 0, previewHeight - draggedNodeHeight);
+
     d3.select(this)
-      .attr('x', d.x = d3.event.x)
-      .attr('y', d.y = d3.event.y);
+      .attr('x', d.x = x)
+      .attr('y', d.y = y);
 
     zoomNode.call(zoom.transform, d3.zoomIdentity
       .scale(currentTransformationValue)
-      .translate(-d3.event.x * ratio, -d3.event.y * ratio)
+      .translate(-x * ratio, -y * ratio)
     );
   }
 
@@ -447,9 +466,14 @@ export default function draw() {
     const transformation = d3.event.transform;
 
     const rightEdge = Math.abs(transformation.x) / transformation.k + width / transformation.k;
+    const bottomEdge = Math.abs(transformation.y) / transformation.k + height / transformation.k;
 
     if (rightEdge > width) {
-      return false;
+      transformation.x = -(width * transformation.k - width);
+    }
+
+    if (bottomEdge > height) {
+      transformation.y = -(height * transformation.k - height);
     }
 
     rescaledX = transformation.rescaleX(x);
@@ -482,4 +506,3 @@ export default function draw() {
       .attr('height', previewHeight / transformation.k);
   }
 }
-

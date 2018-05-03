@@ -44,9 +44,12 @@ export default function draw() {
       '#d8b5a5'
     ]);
 
+  const chartAreaWidth = width + margin.left + margin.right;
+  const chartAreaHeight = height + margin.top + margin.bottom;
+
   const zoom = d3.zoom()
-    .scaleExtent([0.95, 10])
-    .translateExtent([[-100000, -100000], [100000, 100000]])
+    .scaleExtent([1, 10])
+    .translateExtent([[0, 0], [chartAreaWidth, chartAreaHeight]])
     .on('start', () => {
       hoverDot
         .attr('cx', -5)
@@ -359,6 +362,17 @@ export default function draw() {
 
   function zoomed() {
     const transformation = d3.event.transform;
+
+    const rightEdge = Math.abs(transformation.x) / transformation.k + width / transformation.k;
+    const bottomEdge = Math.abs(transformation.y) / transformation.k + height / transformation.k;
+
+    if (rightEdge > width) {
+      transformation.x = -(width * transformation.k - width);
+    }
+
+    if (bottomEdge > height) {
+      transformation.y = -(height * transformation.k - height);
+    }
 
     rescaledX = transformation.rescaleX(x);
     rescaledY = transformation.rescaleY(y);

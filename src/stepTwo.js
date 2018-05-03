@@ -145,7 +145,7 @@ export default function draw() {
 
   extraOptionsContainer.append('div')
     .attr('class', 'hide-all-option')
-    .text('скрыть все')
+    .text('hide all')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = false;
@@ -156,7 +156,7 @@ export default function draw() {
 
   extraOptionsContainer.append('div')
     .attr('class', 'show-all-option')
-    .text('показать все')
+    .text('show all')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = true;
