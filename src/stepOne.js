@@ -49,7 +49,7 @@ export default function draw() {
   });
 
   x.domain(d3.extent(data, d => d.date));
-  y.domain(d3.extent(data, d => d.percent));
+  y.domain([0, d3.max(data, d => d.percent)]);
   colorScale.domain(d3.map(data, d => d.regionId).keys());
 
   const xAxis = d3.axisBottom(x)

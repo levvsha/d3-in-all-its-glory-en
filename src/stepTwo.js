@@ -49,7 +49,7 @@ export default function draw() {
   });
 
   x.domain(d3.extent(data, d => d.date));
-  y.domain(d3.extent(data, d => d.percent));
+  y.domain([0, d3.max(data, d => d.percent)]);
   colorScale.domain(d3.map(data, d => d.regionId)
     .keys());
 
@@ -61,7 +61,7 @@ export default function draw() {
   const yAxis = d3.axisRight(y)
     .ticks(5)
     .tickSize(7 + width)
-    .tickPadding(-15 - width)
+    .tickPadding(-11 - width)
     .tickFormat(d => d + '%');
 
   svg.append('g')
