@@ -307,7 +307,9 @@ export default function draw() {
   }
 
   function voronoiMouseout(d) {
-    d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    if (d) {
+      d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    }
   }
 
   function voronoiClick(d) {

@@ -84,12 +84,12 @@ export default function draw() {
     .tickPadding(-11 - width)
     .tickFormat(d => d + '%');
 
-  svg.append('g')
+  const xAxisElement = svg.append('g')
     .attr('class', 'axis x-axis')
     .attr('transform', `translate(0,${ height + 6 })`)
     .call(xAxis);
 
-  svg.append('g')
+  const yAxisElement = svg.append('g')
     .attr('transform', 'translate(-7, 0)')
     .attr('class', 'axis y-axis')
     .call(yAxis);

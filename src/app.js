@@ -4,7 +4,7 @@ import drawFunction from './stepSix';
 drawFunction();
 
 module.hot.accept('./stepSix', () => { // eslint-disable-line no-undef
-  const newDrawFunction = require('./stepSix').default;
+  const newDrawFunction = require('./stepFour').default;
 
   document.getElementsByClassName('legend')[0].innerHTML = '';
   document.getElementsByClassName('chart')[0].innerHTML = '';

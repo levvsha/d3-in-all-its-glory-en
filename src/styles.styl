@@ -85,3 +85,41 @@ body {
   width: 732px;
   justify-content: space-between;
 }
+
+//STEP SIX
+
+.header {
+  display: flex;
+  width: 910px;
+  padding-bottom: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px rgba(0,0,0,.1) solid;
+}
+
+.title {
+  padding-right: 40px;
+  margin: 0;
+  font-weight: 500;
+  font-size: 18px;
+  line-height: 25px;
+  margin-top: 3px;
+  width: 658px;
+}
+
+.preview {
+  position: relative;
+}
+
+.preview-rect {
+  position: absolute;
+  left: 0;
+  top: 0;
+}
+
+.preview-axis.x-axis .tick:nth-child(2) text {
+  text-anchor: start;
+}
+
+.preview-axis.x-axis .tick:nth-child(3) text {
+  text-anchor: end;
+}

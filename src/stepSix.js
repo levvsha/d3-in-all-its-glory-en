@@ -10,6 +10,7 @@ const timeFormatter = d3.timeFormat('%d-%m-%Y');
 
 export default function draw() {
   const margin = { top: 20, right: 20, bottom: 250, left: 50 };
+  const previewMargin = { top: 10, right: 10, bottom: 15, left: 30 };
   const width = 750 - margin.left - margin.right;
   const height = 615 - margin.top - margin.bottom;
 
@@ -90,6 +91,16 @@ export default function draw() {
     .ticks((width + 2) / (height + 2) * 5)
     .tickSize(-height)
     .tickPadding(10);
+
+  const xAxisPreview = d3.axisBottom(previewX)
+    .tickSize(4)
+    .tickValues(previewX.domain())
+    .tickFormat(d3.timeFormat('%b %Y'));
+
+  const yAxisPreview = d3.axisLeft(previewY)
+    .tickValues(previewY.domain())
+    .tickSize(3)
+    .tickFormat(d => Math.round(d) + '%');
 
   const yAxis = d3.axisRight(y)
     .ticks(5)
@@ -279,9 +290,24 @@ export default function draw() {
       voronoiGroup.classed('voronoi-show', this.checked);
     });
 
-  const previewContainer = svg.append('g')
-    .attr('transform', `translate(0,${ height + margin.top + 35 })`)
-    .attr('class', 'preview');
+  const preview = d3.select('.preview')
+    .append('svg')
+    .attr('width', previewWidth + previewMargin.left + previewMargin.right)
+    .attr('height', previewHeight + previewMargin.top + previewMargin.bottom)
+    .append('g')
+    .attr('transform', `translate(${ previewMargin.left },${ previewMargin.top })`);
+
+  const previewContainer = preview.append('g');
+
+  preview.append('g')
+    .attr('class', 'preview-axis x-axis')
+    .attr('transform', `translate(0,${ previewHeight })`)
+    .call(xAxisPreview);
+
+  preview.append('g')
+    .attr('class', 'preview-axis y-axis')
+    .attr('transform', 'translate(0, 0)')
+    .call(yAxisPreview);
 
   previewContainer.append('rect')
     .attr('x', 0)
@@ -289,7 +315,6 @@ export default function draw() {
     .attr('width', previewWidth)
     .attr('height', previewHeight)
     .attr('fill', '#dedede');
-
   const previewLineGenerator = d3.line()
     .x(d => previewX(d.date))
     .y(d => previewY(d.percent));
@@ -415,7 +440,9 @@ export default function draw() {
   }
 
   function voronoiMouseout(d) {
-    d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    if (d) {
+      d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    }
   }
 
   function voronoiClick(d) {
