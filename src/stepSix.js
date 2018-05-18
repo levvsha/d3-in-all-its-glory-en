@@ -89,7 +89,7 @@ export default function draw() {
 
   const xAxis = d3.axisBottom(x)
     .ticks((width + 2) / (height + 2) * 5)
-    .tickSize(-height)
+    .tickSize(-height - 6)
     .tickPadding(10);
 
   const xAxisPreview = d3.axisBottom(previewX)
