@@ -54,7 +54,7 @@ export default function draw() {
   });
 
   x.domain(d3.extent(data, d => d.date));
-  y.domain(d3.extent(data, d => d.percent));
+  y.domain([0, d3.max(data, d => d.percent)]);
   colorScale.domain(d3.map(data, d => d.regionId).keys());
 
   const xAxis = d3.axisBottom(x)
@@ -64,16 +64,18 @@ export default function draw() {
 
   const yAxis = d3.axisRight(y)
     .ticks(5)
-    .tickSize(width)
-    .tickPadding(-20 - width);
+    .tickSize(7 + width)
+    .tickPadding(-11 - width)
+    .tickFormat(d => d + '%');
 
   svg.append('g')
-    .attr('class', 'axis')
-    .attr('transform', `translate(0,${ height })`)
+    .attr('class', 'axis x-axis')
+    .attr('transform', `translate(0,${ height + 6 })`)
     .call(xAxis);
 
   svg.append('g')
-    .attr('class', 'axis')
+    .attr('transform', 'translate(-7, 0)')
+    .attr('class', 'axis y-axis')
     .call(yAxis);
 
   svg.append('g')
@@ -305,7 +307,9 @@ export default function draw() {
   }
 
   function voronoiMouseout(d) {
-    d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    if (d) {
+      d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    }
   }
 
   function voronoiClick(d) {

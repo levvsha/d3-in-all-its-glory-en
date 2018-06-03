@@ -44,9 +44,12 @@ export default function draw() {
       '#d8b5a5'
     ]);
 
+  const chartAreaWidth = width + margin.left + margin.right;
+  const chartAreaHeight = height + margin.top + margin.bottom;
+
   const zoom = d3.zoom()
-    .scaleExtent([0.95, 10])
-    .translateExtent([[-100000, -100000], [100000, 100000]])
+    .scaleExtent([1, 10])
+    .translateExtent([[0, 0], [chartAreaWidth, chartAreaHeight]])
     .on('start', () => {
       hoverDot
         .attr('cx', -5)
@@ -67,26 +70,28 @@ export default function draw() {
   });
 
   x.domain(d3.extent(data, d => d.date));
-  y.domain(d3.extent(data, d => d.percent));
+  y.domain([0, d3.max(data, d => d.percent)]);
   colorScale.domain(d3.map(data, d => d.regionId).keys());
 
   const xAxis = d3.axisBottom(x)
     .ticks((width + 2) / (height + 2) * 5)
-    .tickSize(-height)
+    .tickSize(-height - 6)
     .tickPadding(10);
 
   const yAxis = d3.axisRight(y)
     .ticks(5)
-    .tickSize(width)
-    .tickPadding(-20 - width);
+    .tickSize(7 + width)
+    .tickPadding(-11 - width)
+    .tickFormat(d => d + '%');
 
   const xAxisElement = svg.append('g')
-    .attr('class', 'axis')
-    .attr('transform', `translate(0,${ height })`)
+    .attr('class', 'axis x-axis')
+    .attr('transform', `translate(0,${ height + 6 })`)
     .call(xAxis);
 
   const yAxisElement = svg.append('g')
-    .attr('class', 'axis')
+    .attr('transform', 'translate(-7, 0)')
+    .attr('class', 'axis y-axis')
     .call(yAxis);
 
   svg.append('g')
@@ -359,6 +364,17 @@ export default function draw() {
 
   function zoomed() {
     const transformation = d3.event.transform;
+
+    const rightEdge = Math.abs(transformation.x) / transformation.k + width / transformation.k;
+    const bottomEdge = Math.abs(transformation.y) / transformation.k + height / transformation.k;
+
+    if (rightEdge > width) {
+      transformation.x = -(width * transformation.k - width);
+    }
+
+    if (bottomEdge > height) {
+      transformation.y = -(height * transformation.k - height);
+    }
 
     rescaledX = transformation.rescaleX(x);
     rescaledY = transformation.rescaleY(y);

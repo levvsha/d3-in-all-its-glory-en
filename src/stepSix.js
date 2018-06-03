@@ -10,6 +10,7 @@ const timeFormatter = d3.timeFormat('%d-%m-%Y');
 
 export default function draw() {
   const margin = { top: 20, right: 20, bottom: 250, left: 50 };
+  const previewMargin = { top: 10, right: 10, bottom: 15, left: 30 };
   const width = 750 - margin.left - margin.right;
   const height = 615 - margin.top - margin.bottom;
 
@@ -81,28 +82,40 @@ export default function draw() {
   });
 
   x.domain(d3.extent(data, d => d.date));
-  y.domain(d3.extent(data, d => d.percent));
+  y.domain([0, d3.max(data, d => d.percent)]);
   previewX.domain(d3.extent(data, d => d.date));
-  previewY.domain(d3.extent(data, d => d.percent));
+  previewY.domain([0, d3.max(data, d => d.percent)]);
   colorScale.domain(d3.map(data, d => d.regionId).keys());
 
   const xAxis = d3.axisBottom(x)
     .ticks((width + 2) / (height + 2) * 5)
-    .tickSize(-height)
+    .tickSize(-height - 6)
     .tickPadding(10);
+
+  const xAxisPreview = d3.axisBottom(previewX)
+    .tickSize(4)
+    .tickValues(previewX.domain())
+    .tickFormat(d3.timeFormat('%b %Y'));
+
+  const yAxisPreview = d3.axisLeft(previewY)
+    .tickValues(previewY.domain())
+    .tickSize(3)
+    .tickFormat(d => Math.round(d) + '%');
 
   const yAxis = d3.axisRight(y)
     .ticks(5)
-    .tickSize(width)
-    .tickPadding(-20 - width);
+    .tickSize(7 + width)
+    .tickPadding(-11 - width)
+    .tickFormat(d => d + '%');
 
   const xAxisElement = svg.append('g')
-    .attr('class', 'axis')
-    .attr('transform', `translate(0,${ height })`)
+    .attr('class', 'axis x-axis')
+    .attr('transform', `translate(0,${ height + 6 })`)
     .call(xAxis);
 
   const yAxisElement = svg.append('g')
-    .attr('class', 'axis')
+    .attr('transform', 'translate(-7, 0)')
+    .attr('class', 'axis y-axis')
     .call(yAxis);
 
   svg.append('g')
@@ -205,7 +218,7 @@ export default function draw() {
 
   extraOptionsContainer.append('div')
     .attr('class', 'hide-all-option')
-    .text('скрыть все')
+    .text('hide all')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = false;
@@ -218,7 +231,7 @@ export default function draw() {
 
   extraOptionsContainer.append('div')
     .attr('class', 'show-all-option')
-    .text('показать все')
+    .text('show all')
     .on('click', () => {
       regionsIds.forEach(regionId => {
         regions[regionId].enabled = true;
@@ -277,9 +290,24 @@ export default function draw() {
       voronoiGroup.classed('voronoi-show', this.checked);
     });
 
-  const previewContainer = svg.append('g')
-    .attr('transform', `translate(0,${ height + margin.top + 35 })`)
-    .attr('class', 'preview');
+  const preview = d3.select('.preview')
+    .append('svg')
+    .attr('width', previewWidth + previewMargin.left + previewMargin.right)
+    .attr('height', previewHeight + previewMargin.top + previewMargin.bottom)
+    .append('g')
+    .attr('transform', `translate(${ previewMargin.left },${ previewMargin.top })`);
+
+  const previewContainer = preview.append('g');
+
+  preview.append('g')
+    .attr('class', 'preview-axis x-axis')
+    .attr('transform', `translate(0,${ previewHeight })`)
+    .call(xAxisPreview);
+
+  preview.append('g')
+    .attr('class', 'preview-axis y-axis')
+    .attr('transform', 'translate(0, 0)')
+    .call(yAxisPreview);
 
   previewContainer.append('rect')
     .attr('x', 0)
@@ -287,7 +315,6 @@ export default function draw() {
     .attr('width', previewWidth)
     .attr('height', previewHeight)
     .attr('fill', '#dedede');
-
   const previewLineGenerator = d3.line()
     .x(d => previewX(d.date))
     .y(d => previewY(d.percent));
@@ -301,17 +328,6 @@ export default function draw() {
     .attr('height', previewHeight)
     .attr('fill', 'rgba(250, 235, 215, 0.78)')
     .call(d3.drag().on('drag', dragged));
-
-  function dragged(d) {
-    d3.select(this)
-      .attr('x', d.x = d3.event.x)
-      .attr('y', d.y = d3.event.y);
-
-    zoomNode.call(zoom.transform, d3.zoomIdentity
-      .scale(currentTransformationValue)
-      .translate(-d3.event.x * ratio, -d3.event.y * ratio)
-    );
-  }
 
   redrawChart();
 
@@ -424,7 +440,9 @@ export default function draw() {
   }
 
   function voronoiMouseout(d) {
-    d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    if (d) {
+      d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    }
   }
 
   function voronoiClick(d) {
@@ -441,15 +459,50 @@ export default function draw() {
     }
   }
 
+  function clamp(number, bottom, top) {
+    let result = number;
+
+    if (number < bottom) {
+      result = bottom;
+    }
+
+    if (number > top) {
+      result = top;
+    }
+
+    return result;
+  }
+
+  function dragged(d) {
+    const draggedNodeWidth = draggedNode.attr('width');
+    const draggedNodeHeight = draggedNode.attr('height');
+    const x = clamp(d3.event.x, 0, previewWidth - draggedNodeWidth);
+    const y = clamp(d3.event.y, 0, previewHeight - draggedNodeHeight);
+
+    d3.select(this)
+      .attr('x', d.x = x)
+      .attr('y', d.y = y);
+
+    zoomNode.call(zoom.transform, d3.zoomIdentity
+      .scale(currentTransformationValue)
+      .translate(-x * ratio, -y * ratio)
+    );
+  }
+
   let currentTransformationValue = 1;
 
   function zoomed() {
     const transformation = d3.event.transform;
 
     const rightEdge = Math.abs(transformation.x) / transformation.k + width / transformation.k;
+    const bottomEdge = Math.abs(transformation.y) / transformation.k + height / transformation.k;
 
     if (rightEdge > width) {
-      return false;
+      transformation.x = -(width * transformation.k - width);
+    }
+
+    if (bottomEdge > height) {
+      transformation.y = -(height * transformation.k - height);
     }
 
     rescaledX = transformation.rescaleX(x);
