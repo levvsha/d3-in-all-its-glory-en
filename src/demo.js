@@ -1,9 +1,9 @@
 d3.csv('https://raw.githubusercontent.com/levvsha/d3-in-all-its-glory-en/master/stats/data.csv').then(data => draw(data))
 
-const timeFormatter = d3.timeFormat('%d-%m-%Y');
-
 const ENABLED_OPACITY = 1;
 const DISABLED_OPACITY = .2;
+
+const timeFormatter = d3.timeFormat('%d-%m-%Y');
 
 function draw(data) {
   const margin = { top: 20, right: 20, bottom: 50, left: 50 };
@@ -15,6 +15,9 @@ function draw(data) {
 
   const y = d3.scaleLinear()
     .range([height, 0]);
+
+  let rescaledX = x;
+  let rescaledY = y;
 
   const colorScale = d3.scaleOrdinal()
     .range([
@@ -38,6 +41,19 @@ function draw(data) {
       '#d8b5a5'
     ]);
 
+  const chartAreaWidth = width + margin.left + margin.right;
+  const chartAreaHeight = height + margin.top + margin.bottom;
+
+  const zoom = d3.zoom()
+    .scaleExtent([1, 10])
+    .translateExtent([[0, 0], [chartAreaWidth, chartAreaHeight]])
+    .on('start', () => {
+      hoverDot
+        .attr('cx', -5)
+        .attr('cy', 0);
+    })
+    .on('zoom', zoomed);
+
   const svg = d3.select('.chart')
     .append('svg')
     .attr('width', width + margin.left + margin.right)
@@ -56,7 +72,7 @@ function draw(data) {
 
   const xAxis = d3.axisBottom(x)
     .ticks((width + 2) / (height + 2) * 5)
-    .tickSize(-height)
+    .tickSize(-height - 6)
     .tickPadding(10);
 
   const yAxis = d3.axisRight(y)
@@ -65,12 +81,12 @@ function draw(data) {
     .tickPadding(-11 - width)
     .tickFormat(d => d + '%');
 
-  svg.append('g')
+  const xAxisElement = svg.append('g')
     .attr('class', 'axis x-axis')
     .attr('transform', `translate(0,${ height + 6 })`)
     .call(xAxis);
 
-  svg.append('g')
+  const yAxisElement = svg.append('g')
     .attr('transform', 'translate(-7, 0)')
     .attr('class', 'axis y-axis')
     .call(yAxis);
@@ -81,6 +97,12 @@ function draw(data) {
 
   svg.append('g')
     .call(d3.axisLeft(y).ticks(0));
+
+  svg.append('defs').append('clipPath')
+    .attr('id', 'clip')
+    .append('rect')
+    .attr('width', width)
+    .attr('height', height);
 
   const nestByRegionId = d3.nest()
     .key(d => d.regionId)
@@ -97,7 +119,7 @@ function draw(data) {
 
   d3.map(data, d => d.regionId)
     .keys()
-    .forEach(function (d, i) {
+    .forEach((d, i) => {
       regions[d] = {
         data: nestByRegionId[i].values,
         enabled: true
@@ -107,8 +129,8 @@ function draw(data) {
   const regionsIds = Object.keys(regions);
 
   const lineGenerator = d3.line()
-    .x(d => x(d.date))
-    .y(d => y(d.percent));
+    .x(d => rescaledX(d.date))
+    .y(d => rescaledY(d.percent));
 
   const nestByDate = d3.nest()
     .key(d => d.date)
@@ -193,7 +215,8 @@ function draw(data) {
       redrawChart();
     });
 
-  const linesContainer = svg.append('g');
+  const linesContainer = svg.append('g')
+    .attr('clip-path', 'url(#clip)');
 
   let singleLineSelected = false;
 
@@ -205,10 +228,12 @@ function draw(data) {
   const hoverDot = svg.append('circle')
     .attr('class', 'dot')
     .attr('r', 3)
+    .attr('clip-path', 'url(#clip)')
     .style('visibility', 'hidden');
 
   let voronoiGroup = svg.append('g')
     .attr('class', 'voronoi-parent')
+    .attr('clip-path', 'url(#clip)')
     .append('g')
     .attr('class', 'voronoi')
     .on('mouseover', () => {
@@ -220,6 +245,17 @@ function draw(data) {
       legendsDate.style('visibility', 'hidden');
       hoverDot.style('visibility', 'hidden');
     });
+
+  d3.select('.voronoi-parent').call(zoom);
+
+  d3.select('.reset-zoom-button').on('click', () => {
+    rescaledX = x;
+    rescaledY = y;
+
+    d3.select('.voronoi-parent').transition()
+      .duration(750)
+      .call(zoom.transform, d3.zoomIdentity);
+  });
 
   d3.select('#show-voronoi')
     .property('disabled', false)
@@ -299,12 +335,14 @@ function draw(data) {
     d3.select(`#region-${ d.data.regionId }`).classed('region-hover', true);
 
     hoverDot
-      .attr('cx', () => x(d.data.date))
-      .attr('cy', () => y(d.data.percent));
+      .attr('cx', () => rescaledX(d.data.date))
+      .attr('cy', () => rescaledY(d.data.percent));
   }
 
   function voronoiMouseout(d) {
-    d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    if (d) {
+      d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    }
   }
 
   function voronoiClick(d) {
@@ -320,5 +358,36 @@ function draw(data) {
       redrawChart([regionId]);
     }
   }
-}
 
+  function zoomed() {
+    const transformation = d3.event.transform;
+
+    const rightEdge = Math.abs(transformation.x) / transformation.k + width / transformation.k;
+    const bottomEdge = Math.abs(transformation.y) / transformation.k + height / transformation.k;
+
+    if (rightEdge > width) {
+      transformation.x = -(width * transformation.k - width);
+    }
+
+    if (bottomEdge > height) {
+      transformation.y = -(height * transformation.k - height);
+    }
+
+    rescaledX = transformation.rescaleX(x);
+    rescaledY = transformation.rescaleY(y);
+
+    xAxisElement.call(xAxis.scale(rescaledX));
+    yAxisElement.call(yAxis.scale(rescaledY));
+
+    linesContainer.selectAll('path')
+      .attr('d', regionId => {
+        return d3.line()
+          .defined(d => d.percent !== 0)
+          .x(d => rescaledX(d.date))
+          .y(d => rescaledY(d.percent))(regions[regionId].data);
+      });
+
+    voronoiGroup
+      .attr('transform', transformation);
+  }
+}
