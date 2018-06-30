@@ -4,7 +4,7 @@ const DISABLED_OPACITY = .2;
 d3.csv('https://raw.githubusercontent.com/levvsha/d3-in-all-its-glory-en/master/stats/data.csv').then(data => draw(data));
 
 function draw(data) {
-  const margin = {top: 20, right: 20, bottom: 50, left: 50};
+  const margin = { top: 20, right: 20, bottom: 50, left: 50 };
   const width = 750 - margin.left - margin.right;
   const height = 420 - margin.top - margin.bottom;
 
@@ -55,7 +55,7 @@ function draw(data) {
 
   const xAxis = d3.axisBottom(x)
     .ticks((width + 2) / (height + 2) * 5)
-    .tickSize(-height - 6)
+    .tickSize(-height)
     .tickPadding(10);
 
   const yAxis = d3.axisRight(y)
@@ -76,12 +76,10 @@ function draw(data) {
 
   svg.append('g')
     .attr('transform', `translate(0,${ height })`)
-    .call(d3.axisBottom(x)
-      .ticks(0));
+    .call(d3.axisBottom(x).ticks(0));
 
   svg.append('g')
-    .call(d3.axisLeft(y)
-      .ticks(0));
+    .call(d3.axisLeft(y).ticks(0));
 
   const nestByRegionId = d3.nest()
     .key(d => d.regionId)
@@ -151,6 +149,8 @@ function draw(data) {
         regions[regionId].enabled = false;
       });
 
+      singleLineSelected = false;
+
       redrawChart();
     });
 
@@ -162,18 +162,41 @@ function draw(data) {
         regions[regionId].enabled = true;
       });
 
+      singleLineSelected = false;
+
       redrawChart();
     });
 
-  function redrawChart() {
-    const enabledRegionsIds = regionsIds.filter(regionId => regions[regionId].enabled);
+  const linesContainer = svg.append('g');
 
-    const paths = svg
+  let singleLineSelected = false;
+
+  const voronoi = d3.voronoi()
+    .x(d => x(d.date))
+    .y(d => y(d.percent))
+    .extent([[0, 0], [width, height]]);
+
+  const voronoiGroup = svg.append('g')
+    .attr('class', 'voronoi-parent')
+    .append('g')
+    .attr('class', 'voronoi');
+
+  d3.select('#show-voronoi')
+    .property('disabled', false)
+    .on('change', function () {
+      voronoiGroup.classed('voronoi-show', this.checked);
+    });
+
+  redrawChart();
+
+  function redrawChart(showingRegionsIds) {
+    const enabledRegionsIds = showingRegionsIds || regionsIds.filter(regionId => regions[regionId].enabled);
+
+    const paths = linesContainer
       .selectAll('.line')
       .data(enabledRegionsIds);
 
-    paths.exit()
-      .remove();
+    paths.exit().remove();
 
     paths
       .enter()
@@ -185,19 +208,68 @@ function draw(data) {
       )
       .style('stroke', regionId => colorScale(regionId));
 
-    legends.each(function (regionId) {
-      const isEnabledRegion = enabledRegionsIds.indexOf(regionId) >= 0;
+    legends.each(function(regionId) {
+      const opacityValue = enabledRegionsIds.indexOf(regionId) >= 0 ? ENABLED_OPACITY : DISABLED_OPACITY;
 
-      d3.select(this)
-        .classed('disabled', !isEnabledRegion);
+      d3.select(this).attr('opacity', opacityValue);
     });
+
+    const filteredData = data.filter(dataItem => enabledRegionsIds.indexOf(dataItem.regionId) >= 0);
+
+    const voronoiPaths = voronoiGroup.selectAll('path')
+      .data(voronoi.polygons(filteredData));
+
+    voronoiPaths.exit().remove();
+
+    voronoiPaths
+      .enter()
+      .append('path')
+      .merge(voronoiPaths)
+      .attr('d', d => (d ? `M${ d.join('L') }Z` : null))
+      .on('mouseover', voronoiMouseover)
+      .on('mouseout', voronoiMouseout)
+      .on('click', voronoiClick);
   }
 
-  redrawChart();
-
   function clickLegendHandler(regionId) {
-    regions[regionId].enabled = !regions[regionId].enabled;
+    if (singleLineSelected) {
+      const newEnabledRegions = singleLineSelected === regionId ? [] : [singleLineSelected, regionId];
+
+      regionsIds.forEach(currentRegionId => {
+        regions[currentRegionId].enabled = newEnabledRegions.indexOf(currentRegionId) >= 0;
+      });
+    } else {
+      regions[regionId].enabled = !regions[regionId].enabled;
+    }
+
+    singleLineSelected = false;
 
     redrawChart();
+  }
+
+  function voronoiMouseover(d) {
+    if (d) {
+      d3.select(`#region-${ d.data.regionId }`).classed('region-hover', true);
+    }
+  }
+
+  function voronoiMouseout(d) {
+    if (d) {
+      d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
+    }
+  }
+
+  function voronoiClick(d) {
+    if (singleLineSelected) {
+      singleLineSelected = false;
+
+      redrawChart();
+    } else {
+      const regionId = d.data.regionId;
+
+      singleLineSelected = regionId;
+
+      redrawChart([regionId]);
+    }
   }
 }
