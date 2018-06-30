@@ -1,3 +1,6 @@
+const ENABLED_OPACITY = 1;
+const DISABLED_OPACITY = .2;
+
 d3.csv('https://raw.githubusercontent.com/levvsha/d3-in-all-its-glory-en/master/stats/data.csv').then(data => draw(data));
 
 function draw(data) {
@@ -10,13 +13,6 @@ function draw(data) {
 
   const y = d3.scaleLinear()
     .range([height, 0]);
-
-  const svg = d3.select('.chart')
-    .append('svg')
-    .attr('width', width + margin.left + margin.right)
-    .attr('height', height + margin.top + margin.bottom)
-    .append('g')
-    .attr('transform', `translate(${ margin.left },${ margin.top })`);
 
   const colorScale = d3.scaleOrdinal()
     .range([
@@ -40,6 +36,13 @@ function draw(data) {
       '#d8b5a5'
     ]);
 
+  const svg = d3.select('.chart')
+    .append('svg')
+    .attr('width', width + margin.left + margin.right)
+    .attr('height', height + margin.top + margin.bottom)
+    .append('g')
+    .attr('transform', `translate(${ margin.left },${ margin.top })`);
+
   data.forEach(function (d) {
     d.date = new Date(d.date);
     d.percent = +d.percent;
@@ -47,7 +50,8 @@ function draw(data) {
 
   x.domain(d3.extent(data, d => d.date));
   y.domain([0, d3.max(data, d => d.percent)]);
-  colorScale.domain(d3.map(data, d => d.regionId).keys());
+  colorScale.domain(d3.map(data, d => d.regionId)
+    .keys());
 
   const xAxis = d3.axisBottom(x)
     .ticks((width + 2) / (height + 2) * 5)
@@ -84,27 +88,116 @@ function draw(data) {
     .sortKeys((v1, v2) => (parseInt(v1, 10) > parseInt(v2, 10) ? 1 : -1))
     .entries(data);
 
+  const regionsNamesById = {};
+
+  nestByRegionId.forEach(item => {
+    regionsNamesById[item.key] = item.values[0].regionName;
+  });
+
   const regions = {};
 
   d3.map(data, d => d.regionId)
     .keys()
     .forEach(function (d, i) {
-      regions[d] = nestByRegionId[i].values;
+      regions[d] = {
+        data: nestByRegionId[i].values,
+        enabled: true
+      };
     });
 
-  const regionIds = Object.keys(regions);
+  const regionsIds = Object.keys(regions);
 
   const lineGenerator = d3.line()
     .x(d => x(d.date))
     .y(d => y(d.percent));
 
-  svg
-    .selectAll('.line')
-    .data(regionIds)
+  const legendContainer = d3.select('.legend');
+
+  const legends = legendContainer
+    .append('svg')
+    .attr('width', 150)
+    .attr('height', 353)
+    .selectAll('g')
+    .data(regionsIds)
     .enter()
-    .append('path')
-    .attr('class', 'line')
-    .attr('id', regionId => `region-${ regionId }`)
-    .attr('d', regionId => lineGenerator(regions[regionId]))
-    .style('stroke', regionId => colorScale(regionId));
+    .append('g')
+    .attr('class', 'legend-item')
+    .attr('transform', (regionId, index) => `translate(0,${ index * 20 })`)
+    .on('click', clickLegendHandler);
+
+  legends.append('rect')
+    .attr('x', 0)
+    .attr('y', 0)
+    .attr('width', 12)
+    .attr('height', 12)
+    .style('fill', regionId => colorScale(regionId))
+    .select(function() { return this.parentNode; })
+    .append('text')
+    .attr('x', 20)
+    .attr('y', 10)
+    .text(regionId => regionsNamesById[regionId])
+    .attr('class', 'textselected')
+    .style('text-anchor', 'start')
+    .style('font-size', 12);
+
+  const extraOptionsContainer = legendContainer.append('div')
+    .attr('class', 'extra-options-container');
+
+  extraOptionsContainer.append('div')
+    .attr('class', 'hide-all-option')
+    .text('hide all')
+    .on('click', () => {
+      regionsIds.forEach(regionId => {
+        regions[regionId].enabled = false;
+      });
+
+      redrawChart();
+    });
+
+  extraOptionsContainer.append('div')
+    .attr('class', 'show-all-option')
+    .text('show all')
+    .on('click', () => {
+      regionsIds.forEach(regionId => {
+        regions[regionId].enabled = true;
+      });
+
+      redrawChart();
+    });
+
+  function redrawChart() {
+    const enabledRegionsIds = regionsIds.filter(regionId => regions[regionId].enabled);
+
+    const paths = svg
+      .selectAll('.line')
+      .data(enabledRegionsIds);
+
+    paths.exit()
+      .remove();
+
+    paths
+      .enter()
+      .append('path')
+      .merge(paths)
+      .attr('class', 'line')
+      .attr('id', regionId => `region-${ regionId }`)
+      .attr('d', regionId => lineGenerator(regions[regionId].data)
+      )
+      .style('stroke', regionId => colorScale(regionId));
+
+    legends.each(function (regionId) {
+      const isEnabledRegion = enabledRegionsIds.indexOf(regionId) >= 0;
+
+      d3.select(this)
+        .classed('disabled', !isEnabledRegion);
+    });
+  }
+
+  redrawChart();
+
+  function clickLegendHandler(regionId) {
+    regions[regionId].enabled = !regions[regionId].enabled;
+
+    redrawChart();
+  }
 }
