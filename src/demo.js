@@ -1,7 +1,9 @@
+d3.csv('https://raw.githubusercontent.com/levvsha/d3-in-all-its-glory-en/master/stats/data.csv').then(data => draw(data))
+
+const timeFormatter = d3.timeFormat('%d-%m-%Y');
+
 const ENABLED_OPACITY = 1;
 const DISABLED_OPACITY = .2;
-
-d3.csv('https://raw.githubusercontent.com/levvsha/d3-in-all-its-glory-en/master/stats/data.csv').then(data => draw(data));
 
 function draw(data) {
   const margin = { top: 20, right: 20, bottom: 50, left: 50 };
@@ -50,8 +52,7 @@ function draw(data) {
 
   x.domain(d3.extent(data, d => d.date));
   y.domain([0, d3.max(data, d => d.percent)]);
-  colorScale.domain(d3.map(data, d => d.regionId)
-    .keys());
+  colorScale.domain(d3.map(data, d => d.regionId).keys());
 
   const xAxis = d3.axisBottom(x)
     .ticks((width + 2) / (height + 2) * 5)
@@ -109,34 +110,59 @@ function draw(data) {
     .x(d => x(d.date))
     .y(d => y(d.percent));
 
+  const nestByDate = d3.nest()
+    .key(d => d.date)
+    .entries(data);
+
+  const percentsByDate = {};
+
+  nestByDate.forEach(dateItem => {
+    percentsByDate[dateItem.key] = {};
+
+    dateItem.values.forEach(item => {
+      percentsByDate[dateItem.key][item.regionId] = item.percent;
+    });
+  });
+
   const legendContainer = d3.select('.legend');
 
-  const legends = legendContainer
-    .append('svg')
-    .attr('width', 150)
-    .attr('height', 353)
+  const legendsSvg = legendContainer
+    .append('svg');
+
+  const legendsDate = legendsSvg.append('text')
+    .attr('visibility', 'hidden')
+    .attr('x', 0)
+    .attr('y', 10);
+
+  const legends = legendsSvg.attr('width', 210)
+    .attr('height', 373)
     .selectAll('g')
     .data(regionsIds)
     .enter()
     .append('g')
     .attr('class', 'legend-item')
-    .attr('transform', (regionId, index) => `translate(0,${ index * 20 })`)
+    .attr('transform', (regionId, index) => `translate(0,${ index * 20 + 20 })`)
     .on('click', clickLegendHandler);
 
-  legends.append('rect')
+  const legendsValues = legends
+    .append('text')
     .attr('x', 0)
+    .attr('y', 10)
+    .attr('class', 'legend-value');
+
+  legends.append('rect')
+    .attr('x', 58)
     .attr('y', 0)
     .attr('width', 12)
     .attr('height', 12)
     .style('fill', regionId => colorScale(regionId))
     .select(function() { return this.parentNode; })
     .append('text')
-    .attr('x', 20)
+    .attr('x', 78)
     .attr('y', 10)
     .text(regionId => regionsNamesById[regionId])
-    .attr('class', 'textselected')
-    .style('text-anchor', 'start')
-    .style('font-size', 12);
+    .attr('class', 'legend-text')
+    .style('text-anchor', 'start');
 
   const extraOptionsContainer = legendContainer.append('div')
     .attr('class', 'extra-options-container');
@@ -176,10 +202,24 @@ function draw(data) {
     .y(d => y(d.percent))
     .extent([[0, 0], [width, height]]);
 
-  const voronoiGroup = svg.append('g')
+  const hoverDot = svg.append('circle')
+    .attr('class', 'dot')
+    .attr('r', 3)
+    .style('visibility', 'hidden');
+
+  let voronoiGroup = svg.append('g')
     .attr('class', 'voronoi-parent')
     .append('g')
-    .attr('class', 'voronoi');
+    .attr('class', 'voronoi')
+    .on('mouseover', () => {
+      legendsDate.style('visibility', 'visible');
+      hoverDot.style('visibility', 'visible');
+    })
+    .on('mouseout', () => {
+      legendsValues.text('');
+      legendsDate.style('visibility', 'hidden');
+      hoverDot.style('visibility', 'hidden');
+    });
 
   d3.select('#show-voronoi')
     .property('disabled', false)
@@ -248,15 +288,23 @@ function draw(data) {
   }
 
   function voronoiMouseover(d) {
-    if (d) {
-      d3.select(`#region-${ d.data.regionId }`).classed('region-hover', true);
-    }
+    legendsDate.text(timeFormatter(d.data.date));
+
+    legendsValues.text(dataItem => {
+      const value = percentsByDate[d.data.date][dataItem];
+
+      return value ? value + '%' : 'N.A.';
+    });
+
+    d3.select(`#region-${ d.data.regionId }`).classed('region-hover', true);
+
+    hoverDot
+      .attr('cx', () => x(d.data.date))
+      .attr('cy', () => y(d.data.percent));
   }
 
   function voronoiMouseout(d) {
-    if (d) {
-      d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
-    }
+    d3.select(`#region-${ d.data.regionId }`).classed('region-hover', false);
   }
 
   function voronoiClick(d) {
@@ -273,3 +321,4 @@ function draw(data) {
     }
   }
 }
+
